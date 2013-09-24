@@ -1,7 +1,10 @@
 {
     "gallery-model-form": {
         "requires": [
-            "yui-base"
+            "yui-base",
+            "node",
+            "event",
+            "model"
         ]
     }
 }
