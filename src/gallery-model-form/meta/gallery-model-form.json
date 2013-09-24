@@ -1,0 +1,7 @@
+{
+    "gallery-model-form": {
+        "requires": [
+            "yui-base"
+        ]
+    }
+}

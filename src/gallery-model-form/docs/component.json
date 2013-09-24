@@ -1,0 +1,11 @@
+{
+    "name"       : "gallery-model-form",
+    "displayName": "Gallery: gallery-model-form",
+    "description": "*Summary Goes Here*",
+    "author"     : [ "dfederighi" ],
+    "use"        : [ "gallery-model-form" ],
+
+    "tags": [ "gallery" ],
+
+    "examples": []
+}
