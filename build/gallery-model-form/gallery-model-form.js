@@ -4,79 +4,139 @@ Y.ModelForm = Y.Base.create('model-form', Y.Widget, [], {
     initializer: function(cfg) {
         this._fields = [];
         this._eventHandles = [];
-        this._formValues = cfg.values;
-        
-        /*  Pass in a Y.Model instance instead */
-        this.model = new Y.Model({
-            testText: '',
-            testText2: '',
-            testSelect: '',
-            testCheckbox: false,
-            testSwitch: 0
-        });
 
-        this.model.on('change', this._handleModelChange, this);
-        this.after('render', Y.bind(this._afterRender, this));
+        if (cfg.values) { this._formValues = cfg.values; }
+
+        this.set('model', new Y.Model());
+        this._eventHandles.push(this.get('model').on('change', this._handleModelChange, this));
+    },
+
+    destructor: function() {
+        (new Y.EventHandle(this._eventHandles)).detach();
+        if (this.form) {
+            this.form.destroy();
+        }
     },
     
-    _afterRender: function() {
-        this.get('contentBox').setHTML(Y.Node.create(this.get('markup')));
+    renderUI: function() {
+        if (this.get('markup')) {
+            this.get('contentBox').setHTML(Y.Node.create(this.get('markup')));
+        }
+        this.form = this.get('boundingBox').one('form');
         this._parseFields();
     },
-    
+
     getField: function(name) {
          return this._fields[name];
     },
 
+    getForm: function() {
+        return this.form;
+    },
+
+    reset: function(clear) {
+        this.get('model').reset();
+        if (!clear) {
+            if (!Y.Object.isEmpty(this._formValues)) {
+                this.get('model').setAttrs(this._formValues);
+            }
+        }
+    },
+
     _handleModelChange: function(e) {
         if (e.src === 'form') { return; }
- 
+
         Y.Object.each(e.changed, function(obj, key) {
             var field = this.getField(key);
- 
             if (!Y.Lang.isUndefined(field)) {
-                field.set('value', obj.newVal);
+                if (field.get('type') === 'checkbox') {
+                    field.set('checked', obj.newVal);
+                } else if (field.get('type') === 'radio') {
+                    Y.all('input[name=' + key + ']').each(function (field) {
+                        if (field.get('value') === obj.newVal) {
+                            field.set('checked', true);
+                        }
+                    }, this);
+                } else {
+                    field.set('value', obj.newVal);
+                }
             }
 
         }, this);
     },
 
     _parseFields: function() {
-        var allFields = this.get('boundingBox').one('form').all('*');
+        var allFields = this.get('boundingBox').one('form').all('*'),
+            model = this.get('model'),
+            formValues = {};
         
-        /* add index, nodeList if needed */
         allFields.each(function (node) {
             var nodeName = node.get('nodeName'),
-                nodeType = node.get('type');
+                nodeType = node.get('type'),
+                fieldName = node.get('name');
         
             if (nodeName === 'INPUT') {
                 if (nodeType === 'text') {
-                    node.after('keyup', function(e) {
-                        this.model.set(node.get('name'), e.target.get('value'), {src:'form'});
-                    }, this);
+                    this._eventHandles.push(
+                        node.after('keyup', function(e) {
+                            model.set(fieldName, e.target.get('value'), {src:'form'});
+                        }, this)
+                    );
                 } else if (nodeType === 'checkbox') {
-                    node.after('click', function(e) {
-                        this.model.set(node.get('name'), e.target.get('checked'), {src:'form'});
-                    }, this);
+                    this._eventHandles.push(
+                        node.after('click', function(e) {
+                            model.set(fieldName, e.target.get('checked'), {src:'form'});
+                        }, this)
+                    );
                 } else if (nodeType === 'radio') {
-                    node.on('change', function(e) {
-                        this.model.set(node.get('name'), e.target.get('value'), {src:'form'});
-                    }, this);
+                    this._eventHandles.push(
+                        node.on('change', function(e) {
+                            model.set(fieldName, e.target.get('value'), {src:'form'});
+                        }, this)
+                    );
                 }
-                
-                this._fields[node.get('name')] = node;
+                this._fields[fieldName] = node;
+                formValues[fieldName] = node.get('value');
             } else if (nodeName === 'SELECT') {
-                node.after('change', function(e) {
-                    this.model.set(node.get('name'), e.target.get('value'), {src:'form'});
-                }, this);
-
-                 this._fields[node.get('name')] = node;
+                this._eventHandles.push(
+                    node.after('change', function(e) {
+                        model.set(fieldName, e.target.get('value'), {src:'form'});
+                    }, this)
+                );
+                this._fields[fieldName] = node;
+                formValues[fieldName] = node.get('value');
+            } else if (nodeName === 'TEXTAREA') {
+                this._eventHandles.push(
+                    node.on('keyup', function(e) {
+                        model.set(fieldName, e.target.get('value'), {src:'form'});
+                    })
+                );
+                this._fields[fieldName] = node;
+                formValues[fieldName] = node.get('value');
+            } else if (nodeName === 'BUTTON') {
+                this._eventHandles.push(
+                    node.on('click', function(e) {
+                        model.set(fieldName, e.target.get('value'), {src:'form'});
+                    })
+                );
+                this._fields[fieldName] = node;
+                formValues[fieldName] = node.get('value');
             }
         }, this);
 
+        Y.Object.each(this._fields, function(field, fieldName) {
+            if (!model.get(fieldName)) {
+                model.set(fieldName, '', {silent: true});
+            }
+        });
+
         /* Do we have form values passed in? */
         if (!Y.Object.isEmpty(this._formValues)) {
-            this.model.setAttrs(this._formValues);
+            model.setAttrs(this._formValues);
+        } else {
+            if (!Y.Object.isEmpty(formValues)) {
+                model.setAttrs(formValues);
+            }
         }
     }
 },
@@ -84,6 +144,9 @@ Y.ModelForm = Y.Base.create('model-form', Y.Widget, [], {
     ATTRS: {
         markup: {
             value: ''
+        },
+        model: {
+            value: null
         }
     }
 });

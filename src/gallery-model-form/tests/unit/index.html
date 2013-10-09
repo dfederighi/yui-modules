@@ -11,6 +11,11 @@
 
 <script>
 YUI({
+    modules: {
+        'gallery-model-form': {
+            path: '../../../../build/gallery-model-form/gallery-model-form-debug.js'
+        }
+    },
     coverage: ['gallery-model-form'],
     filter: (window.location.search.match(/[?&]filter=([^&]+)/) || [])[1] || 'raw'
 }).use('test-console', 'test', 'module-tests', function(Y) {
