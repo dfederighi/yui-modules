@@ -63,11 +63,27 @@ Y.ModelForm = Y.Base.create('model-form', Y.Widget, [], {
         }, this);
     },
 
+    /* interesting idea ... create a master table ... and do a lookup on nodeName/nodeType then
+       pull out and trigger a method reference ... to avoid all of the nested if/else stuff? */
     _parseFields: function() {
         var allFields = this.get('boundingBox').one('form').all('*'),
             model = this.get('model'),
-            formValues = {};
-        
+            _formValues = {};
+
+        /* create a table like so
+            var nodeTypes = {
+                'INPUT': {
+                    'text':'_handleTextInput'
+                }
+            };
+            
+            use like this ...
+            if (nodeTypes[nodeName][nodeType]) {
+                var handleMethod = eval(nodeTypes[nodeName][nodeType]);
+                handleMethod.apply(node, [fieldName, _formValues]);
+            }
+        */
+
         allFields.each(function (node) {
             var nodeName = node.get('nodeName'),
                 nodeType = node.get('type'),
@@ -80,45 +96,64 @@ Y.ModelForm = Y.Base.create('model-form', Y.Widget, [], {
                             model.set(fieldName, e.target.get('value'), {src:'form'});
                         }, this)
                     );
+                    if (node.get('value') !== '') {
+                        _formValues[fieldName] = node.get('value');
+                    }
                 } else if (nodeType === 'checkbox') {
                     this._eventHandles.push(
                         node.after('click', function(e) {
                             model.set(fieldName, e.target.get('checked'), {src:'form'});
                         }, this)
                     );
+                    if (node.get('checked')) {
+                        _formValues[fieldName] = node.get('checked');
+                    }
                 } else if (nodeType === 'radio') {
                     this._eventHandles.push(
                         node.on('change', function(e) {
                             model.set(fieldName, e.target.get('value'), {src:'form'});
                         }, this)
                     );
+                    if (node.get('checked')) {
+                        _formValues[fieldName] = node.get('value');
+                    }
                 }
                 this._fields[fieldName] = node;
-                formValues[fieldName] = node.get('value');
             } else if (nodeName === 'SELECT') {
+                /* nodeType is 'select-one' */
                 this._eventHandles.push(
                     node.after('change', function(e) {
                         model.set(fieldName, e.target.get('value'), {src:'form'});
                     }, this)
                 );
                 this._fields[fieldName] = node;
-                formValues[fieldName] = node.get('value');
+                node.get('options').each(function(option) {
+                    if (option.get('selected')) {
+                        _formValues[fieldName] = option.get('value');
+                    }
+                }, this);
             } else if (nodeName === 'TEXTAREA') {
+                /* nodeType is 'textarea' */
                 this._eventHandles.push(
                     node.on('keyup', function(e) {
                         model.set(fieldName, e.target.get('value'), {src:'form'});
                     })
                 );
                 this._fields[fieldName] = node;
-                formValues[fieldName] = node.get('value');
+                if (node.get('value') !== '') {
+                    _formValues[fieldName] = node.get('value');
+                }
             } else if (nodeName === 'BUTTON') {
+                /* nodeType is 'button' */
                 this._eventHandles.push(
                     node.on('click', function(e) {
                         model.set(fieldName, e.target.get('value'), {src:'form'});
                     })
                 );
                 this._fields[fieldName] = node;
-                formValues[fieldName] = node.get('value');
+                if (node.get('value') !== '') {
+                    _formValues[fieldName] = node.get('value');
+                }
             }
         }, this);
 
@@ -130,12 +165,17 @@ Y.ModelForm = Y.Base.create('model-form', Y.Widget, [], {
 
         /* Do we have form values passed in? */
         if (!Y.Object.isEmpty(this._formValues)) {
+            this._formValues = Y.merge(_formValues, this._formValues);
             model.setAttrs(this._formValues);
-        } else {
-            if (!Y.Object.isEmpty(formValues)) {
-                model.setAttrs(formValues);
-            }
         }
+
+        /* Y.merge with this._formValues? */
+        /*
+        if (!Y.Object.isEmpty(formValues)) {
+            console.log('formValues:', formValues);
+            model.setAttrs(formValues);
+        }
+        */
     }
 },
 {
