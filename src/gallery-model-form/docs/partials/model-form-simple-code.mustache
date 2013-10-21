@@ -1,0 +1,9 @@
+var form = '<form id="test-form">' +
+            '<input type="text" name="test-name" id="test-name" value="test value" />' +
+           '</form>',
+    modelForm;
+
+modelForm = new Y.ModelForm({
+    boundingBox: Y.one('#form-example'),
+    markup: form
+}).render();
