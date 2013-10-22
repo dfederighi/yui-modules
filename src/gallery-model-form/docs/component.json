@@ -10,6 +10,6 @@
     "examples": [{
         "name": "model-form-simple",
         "displayName": "Simple Model Form Example",
-        "modules": ["gallery-model-form"]
+        "modules": ["model-form"]
     }]
 }

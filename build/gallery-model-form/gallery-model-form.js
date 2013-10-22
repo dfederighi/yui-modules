@@ -329,4 +329,4 @@ Y.ModelForm = Y.Base.create('model-form', Y.Widget, [], {
 });
 
 
-}, '@VERSION@', {"requires": ["yui-base", "node", "event", "model"]});
+}, '@VERSION@', {"requires": ["yui-base", "node", "event", "model", "widget"]});

@@ -4,7 +4,8 @@
             "yui-base",
             "node",
             "event",
-            "model"
+            "model",
+            "widget"
         ]
     }
 }
